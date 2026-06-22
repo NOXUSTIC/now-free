@@ -19,7 +19,7 @@ function nextClassFor(userSlots: Slot[], dayIdx: number, time: string): Slot | n
   return todays[0] ?? null;
 }
 
-export default function FreePage() {
+function FreePage() {
   const { user } = useAuth();
   const [revealed, setRevealed] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
