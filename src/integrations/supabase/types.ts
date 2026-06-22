@@ -14,7 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          created_at: string
+          creator_id: string
+          creator_name: string
+          description: string
+          end_time: string | null
+          event_date: string
+          id: string
+          location: string
+          start_time: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          creator_name?: string
+          description?: string
+          end_time?: string | null
+          event_date: string
+          id?: string
+          location?: string
+          start_time?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          creator_name?: string
+          description?: string
+          end_time?: string | null
+          event_date?: string
+          id?: string
+          location?: string
+          start_time?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      exams: {
+        Row: {
+          course_code: string
+          created_at: string
+          end_time: string | null
+          exam_date: string
+          exam_type: string
+          id: string
+          room: string
+          start_time: string | null
+          user_id: string
+        }
+        Insert: {
+          course_code: string
+          created_at?: string
+          end_time?: string | null
+          exam_date: string
+          exam_type: string
+          id?: string
+          room?: string
+          start_time?: string | null
+          user_id: string
+        }
+        Update: {
+          course_code?: string
+          created_at?: string
+          end_time?: string | null
+          exam_date?: string
+          exam_type?: string
+          id?: string
+          room?: string
+          start_time?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      routine_slots: {
+        Row: {
+          course_code: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          room: string
+          section: string
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          course_code?: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          room?: string
+          section?: string
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          course_code?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          room?: string
+          section?: string
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
