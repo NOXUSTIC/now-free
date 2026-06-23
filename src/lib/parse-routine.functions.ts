@@ -7,13 +7,18 @@ const InputSchema = z.object({
   filename: z.string().default("routine.pdf"),
 });
 
+// `.default()` in Zod only fires for `undefined`, not `null` — and Gemini
+// frequently emits explicit `null` for fields it couldn't find in the PDF
+// (e.g. a room not yet assigned). `.nullish()` + transform catches both.
+const nullableString = () => z.string().nullish().transform((v) => v ?? "");
+
 const SlotSchema = z.object({
   day_of_week: z.number().int().min(0).max(6),
   start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-  course_code: z.string().default(""),
-  section: z.string().default(""),
-  room: z.string().default(""),
+  course_code: nullableString(),
+  section: nullableString(),
+  room: nullableString(),
 });
 const ExamSchema = z.object({
   course_code: z.string(),
@@ -21,7 +26,7 @@ const ExamSchema = z.object({
   exam_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable().optional(),
   end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable().optional(),
-  room: z.string().default(""),
+  room: nullableString(),
 });
 
 export type ParsedRoutine = {
@@ -61,6 +66,7 @@ Rules:
 - Convert all times to 24-hour HH:MM (e.g. "11:00 AM"->"11:00", "2:00 PM"->"14:00").
 - Skip empty cells and weekly off days.
 - Include both midterm and final exams if listed. Use ISO 2026 dates when only month/day shown; otherwise pick the most reasonable year from the PDF semester context.
+- If a field like room isn't printed or isn't known (e.g. exam room not yet assigned), use an empty string "" — never null.
 - Return ONLY the JSON object, nothing else.`;
 
 export const parseRoutinePdf = createServerFn({ method: "POST" })
