@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { BRACU_EMAIL_RE, useAuth } from "@/lib/auth";
+import { resetPasswordDirect } from "@/lib/reset-password.functions";
 import { toast } from "sonner";
 
 const searchSchema = z.object({
