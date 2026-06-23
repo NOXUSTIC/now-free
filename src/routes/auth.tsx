@@ -162,6 +162,8 @@ function makeCaptcha() {
 
 function ForgotForm({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [captcha, setCaptcha] = useState(makeCaptcha);
   const [guess, setGuess] = useState("");
   const [solved, setSolved] = useState(false);
@@ -176,20 +178,24 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
       return;
     }
     setSolved(true);
-    toast.success("ক্যাপচা সঠিক। এবার তোমার ইমেইল দাও।");
+    toast.success("ক্যাপচা সঠিক। এবার নতুন পাসওয়ার্ড দাও।");
   }
 
-  async function sendReset(e: React.FormEvent) {
+  async function doReset(e: React.FormEvent) {
     e.preventDefault();
     if (!BRACU_EMAIL_RE.test(email)) return toast.error("তোমার @g.bracu.ac.bd ইমেইল ব্যবহার করো");
+    if (password.length < 6) return toast.error("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
+    if (password !== confirm) return toast.error("পাসওয়ার্ড মিলছে না");
     setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("রিসেট লিঙ্ক পাঠানো হয়েছে। ইনবক্স চেক করো।");
-    onBack();
+    try {
+      await resetPasswordDirect({ data: { email, password } });
+      toast.success("পাসওয়ার্ড পরিবর্তন হয়েছে। এবার লগ ইন করো।");
+      onBack();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "রিসেট ব্যর্থ হয়েছে");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -197,8 +203,8 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
       <h2 className="font-display text-2xl">পাসওয়ার্ড রিসেট</h2>
       <p className="text-sm text-muted-foreground">
         {solved
-          ? "ক্যাপচা সঠিক। এবার ইমেইল দিয়ে রিসেট লিঙ্ক নাও।"
-          : "প্রথমে নিচের ক্যাপচাটি সমাধান করো। সঠিক হলে পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হবে।"}
+          ? "ক্যাপচা সঠিক। নতুন পাসওয়ার্ড সেট করো।"
+          : "প্রথমে নিচের ক্যাপচাটি সমাধান করো। সঠিক হলে নতুন পাসওয়ার্ড সেট করতে পারবে।"}
       </p>
 
       {!solved ? (
@@ -234,10 +240,12 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
           </button>
         </form>
       ) : (
-        <form onSubmit={sendReset} className="space-y-4">
+        <form onSubmit={doReset} className="space-y-4">
           <Field label="স্টুডেন্ট ইমেইল" type="email" value={email} onChange={setEmail} placeholder="name@g.bracu.ac.bd" required />
+          <Field label="নতুন পাসওয়ার্ড" type="password" value={password} onChange={setPassword} required />
+          <Field label="পাসওয়ার্ড নিশ্চিত করো" type="password" value={confirm} onChange={setConfirm} required />
           <button disabled={busy} className="btn-hero w-full py-3 rounded-xl font-medium">
-            {busy ? "পাঠানো হচ্ছে…" : "রিসেট লিঙ্ক পাঠাও"}
+            {busy ? "রিসেট হচ্ছে…" : "পাসওয়ার্ড রিসেট করো"}
           </button>
           <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground w-full text-center">
             লগ ইনে ফিরে যাও
