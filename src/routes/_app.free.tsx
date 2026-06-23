@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { DAY_NAMES_BN, dhakaDayIndex, dhakaTimeString, fmt12, nowInDhaka } from "@/lib/dhaka-time";
@@ -15,7 +15,9 @@ type Slot = {
 };
 
 function nextClassFor(userSlots: Slot[], dayIdx: number, time: string): Slot | null {
-  const todays = userSlots.filter((s) => s.day_of_week === dayIdx && s.start_time > time).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const todays = userSlots
+    .filter((s) => s.day_of_week === dayIdx && s.start_time > time)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
   return todays[0] ?? null;
 }
 
@@ -24,17 +26,12 @@ function FreePage() {
   const [revealed, setRevealed] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allSlots, setAllSlots] = useState<Slot[]>([]);
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!revealed) return;
-    const id = setInterval(() => setTick((t) => t + 1), 15000);
-    return () => clearInterval(id);
-  }, [revealed]);
-
-  async function reveal() {
-    setRevealed(true);
+  async function loadData() {
     setLoading(true);
     const [{ data: ps }, { data: ss }] = await Promise.all([
       supabase.from("profiles").select("id,full_name,email"),
@@ -45,71 +42,125 @@ function FreePage() {
     setLoading(false);
   }
 
-  // re-fetch every 60s to catch new uploads
+  async function reveal() {
+    setRevealed(true);
+    await loadData();
+  }
+
+  // Realtime: presence channel + routine_slots changes
+  useEffect(() => {
+    if (!revealed || !user) return;
+
+    const channel = supabase.channel("free-now-presence", {
+      config: { presence: { key: user.id } },
+    });
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        setOnlineIds(new Set(Object.keys(state)));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "routine_slots" }, () => {
+        loadData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        loadData();
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [revealed, user]);
+
+  // Recompute exactly at the next minute boundary (no fixed 15s interval)
   useEffect(() => {
     if (!revealed) return;
-    const id = setInterval(reveal, 60000);
-    return () => clearInterval(id);
-  }, [revealed]);
+    const now = new Date();
+    const msToNextMinute = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+    timerRef.current = setTimeout(() => setTick((t) => t + 1), msToNextMinute + 50);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [revealed, tick]);
 
   const now = nowInDhaka();
   const today = dhakaDayIndex(now);
   const time = dhakaTimeString(now);
   void tick;
 
-  // Group slots by user
-  const slotsByUser = new Map<string, Slot[]>();
-  for (const s of allSlots) {
-    const arr = slotsByUser.get(s.user_id) ?? [];
-    arr.push(s);
-    slotsByUser.set(s.user_id, arr);
-  }
+  const slotsByUser = useMemo(() => {
+    const m = new Map<string, Slot[]>();
+    for (const s of allSlots) {
+      const arr = m.get(s.user_id) ?? [];
+      arr.push(s);
+      m.set(s.user_id, arr);
+    }
+    return m;
+  }, [allSlots]);
 
-  // Free = profile exists & has any routine slots & none of those slots is currently active
   const freeUsers = profiles
-    .filter((p) => slotsByUser.has(p.id))
+    .filter((p) => slotsByUser.has(p.id) && onlineIds.has(p.id))
     .map((p) => {
       const slots = slotsByUser.get(p.id)!;
-      const inClass = slots.find((s) => s.day_of_week === today && s.start_time <= time && s.end_time > time);
+      const inClass = slots.find(
+        (s) => s.day_of_week === today && s.start_time <= time && s.end_time > time,
+      );
       const next = nextClassFor(slots, today, time);
       return { p, inClass, next };
     })
     .filter((x) => !x.inClass)
-    .sort((a, b) => (a.p.id === user?.id ? -1 : b.p.id === user?.id ? 1 : a.p.full_name.localeCompare(b.p.full_name)));
+    .sort((a, b) =>
+      a.p.id === user?.id ? -1 : b.p.id === user?.id ? 1 : a.p.full_name.localeCompare(b.p.full_name),
+    );
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-10">
       <div className="text-center">
-        <p className="text-sm text-muted-foreground">{DAY_NAMES_BN[today]}বার · {fmt12(time.slice(0,5))}</p>
+        <p className="text-sm text-muted-foreground">
+          {DAY_NAMES_BN[today]}বার · {fmt12(time.slice(0, 5))}
+        </p>
         <h1 className="mt-2 font-display text-4xl md:text-5xl font-bold text-primary">এখন কে ফ্রি??</h1>
       </div>
 
       {!revealed ? (
         <div className="mt-12 text-center">
-          <button onClick={reveal} className="btn-hero text-xl px-10 py-6 rounded-2xl font-display font-bold shadow-xl hover:scale-[1.02] transition">
+          <button
+            onClick={reveal}
+            className="btn-hero text-xl px-10 py-6 rounded-2xl font-display font-bold shadow-xl hover:scale-[1.02] transition"
+          >
             এখন কে ফ্রি??
           </button>
-          <p className="mt-4 text-sm text-muted-foreground">Tap to see classmates currently free.</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            বাটনে চাপ দিয়ে দেখো এই মুহূর্তে কারা ফ্রি আছে।
+          </p>
         </div>
       ) : (
         <div className="mt-10">
           {loading && profiles.length === 0 ? (
-            <p className="text-center text-muted-foreground">Looking…</p>
+            <p className="text-center text-muted-foreground">খুঁজছি…</p>
           ) : freeUsers.length === 0 ? (
             <div className="text-center bg-card border rounded-2xl p-8 ring-soft">
-              <p className="text-muted-foreground">No one is registered as free right now.</p>
+              <p className="text-muted-foreground">এই মুহূর্তে কেউ অনলাইন ও ফ্রি নেই।</p>
               <p className="text-xs text-muted-foreground mt-2">
-                Note: only students who've uploaded their routine appear here.
+                শুধু যারা রুটিন আপলোড করেছে এবং এখন অনলাইনে আছে তারা দেখা যাবে।
               </p>
               <Link to="/routine" className="mt-4 inline-block text-primary text-sm hover:underline">
-                Upload your routine →
+                তোমার রুটিন আপলোড করো →
               </Link>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-muted-foreground">{freeUsers.length} free right now</span>
-                <button onClick={reveal} className="text-xs text-primary hover:underline">Refresh</button>
+                <span className="text-sm text-muted-foreground">
+                  এই মুহূর্তে {freeUsers.length} জন ফ্রি · লাইভ
+                </span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[oklch(0.7_0.18_150)] animate-pulse" />
+                  রিয়েল-টাইম
+                </span>
               </div>
               <ul className="space-y-2">
                 {freeUsers.map(({ p, next }) => (
@@ -120,10 +171,12 @@ function FreePage() {
                     <div className="flex-1">
                       <div className="font-medium">
                         {p.full_name || p.email.split("@")[0]}
-                        {p.id === user?.id && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                        {p.id === user?.id && <span className="ml-2 text-xs text-muted-foreground">(তুমি)</span>}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {next ? `Free until ${fmt12(next.start_time)} (${next.course_code})` : "Free for the rest of the day"}
+                        {next
+                          ? `${fmt12(next.start_time)} পর্যন্ত ফ্রি (${next.course_code})`
+                          : "আজকের বাকি সময় ফ্রি"}
                       </div>
                     </div>
                     <span className="w-2.5 h-2.5 rounded-full bg-[oklch(0.7_0.18_150)] animate-pulse" />
