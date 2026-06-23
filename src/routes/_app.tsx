@@ -59,7 +59,7 @@ function AppShell() {
             })}
           </nav>
           <button onClick={signOut} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">
-            Log out
+            লগ আউট
           </button>
         </div>
       </header>

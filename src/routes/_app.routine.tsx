@@ -37,24 +37,22 @@ function RoutinePage() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!f.name.toLowerCase().endsWith(".pdf")) return toast.error("Please upload a PDF file");
-    if (f.size > 8 * 1024 * 1024) return toast.error("PDF too large (max 8MB)");
+    if (!f.name.toLowerCase().endsWith(".pdf")) return toast.error("দয়া করে একটি PDF ফাইল আপলোড করো");
+    if (f.size > 8 * 1024 * 1024) return toast.error("PDF অনেক বড় (সর্বোচ্চ ৮MB)");
 
     setBusy(true);
-    setProgress("Reading file…");
+    setProgress("ফাইল পড়া হচ্ছে…");
     try {
       const buf = await f.arrayBuffer();
       const bytes = new Uint8Array(buf);
-      // base64 encode
       let bin = "";
       for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
       const b64 = btoa(bin);
 
-      setProgress("Scanning routine with AI… (may take 10–30s)");
+      setProgress("AI দিয়ে রুটিন স্ক্যান হচ্ছে… (১০-৩০ সেকেন্ড লাগতে পারে)");
       const parsed = await parseRoutinePdf({ data: { pdfBase64: b64, filename: f.name } });
 
-      setProgress("Saving…");
-      // Wipe old slots and exams for this user, then insert new
+      setProgress("সেভ হচ্ছে…");
       await supabase.from("routine_slots").delete().eq("user_id", user!.id);
       await supabase.from("exams").delete().eq("user_id", user!.id);
 
@@ -69,11 +67,11 @@ function RoutinePage() {
         if (error) throw error;
       }
       qc.invalidateQueries();
-      toast.success(`Parsed ${parsed.slots.length} class periods and ${parsed.exams.length} exams.`);
+      toast.success(`${parsed.slots.length}টি ক্লাস ও ${parsed.exams.length}টি পরীক্ষা পাওয়া গেছে।`);
       setProgress("");
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : "Failed to parse routine");
+      toast.error(err instanceof Error ? err.message : "রুটিন পার্স করা যায়নি");
       setProgress("");
     } finally {
       setBusy(false);
@@ -81,7 +79,6 @@ function RoutinePage() {
     }
   }
 
-  // Group slots by day
   const byDay = new Map<number, typeof slots>();
   for (const s of slots) {
     const arr = byDay.get(s.day_of_week) ?? [];
@@ -89,29 +86,37 @@ function RoutinePage() {
     byDay.set(s.day_of_week, arr);
   }
 
+  const hasRoutine = slots.length > 0;
+
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-      <h1 className="font-display text-3xl">Your routine</h1>
+      <h1 className="font-display text-3xl">তোমার রুটিন</h1>
       <p className="mt-2 text-muted-foreground">
-        Upload your BRACU USIS routine PDF. We'll extract every class period and exam date automatically.
+        তোমার USIS রুটিন PDF আপলোড করো। আমরা প্রতিটি ক্লাস ও পরীক্ষার তারিখ স্বয়ংক্রিয়ভাবে বের করে নেব।
+        চাইলে যেকোনো সময় নতুন PDF দিয়ে আবার আপলোড করতে পারো — পুরোনো রুটিন রিপ্লেস হয়ে যাবে।
       </p>
 
       <div className="mt-6 rounded-2xl border-2 border-dashed p-8 text-center bg-card">
         <div className="text-5xl">📄</div>
-        <p className="mt-3 font-medium">Drop your routine PDF here</p>
-        <p className="text-sm text-muted-foreground">PDF only, up to 8MB</p>
+        <p className="mt-3 font-medium">
+          {hasRoutine ? "নতুন PDF দিয়ে রুটিন আপডেট করো" : "তোমার রুটিন PDF এখানে দাও"}
+        </p>
+        <p className="text-sm text-muted-foreground">শুধু PDF, সর্বোচ্চ ৮MB</p>
         <input ref={fileRef} type="file" accept="application/pdf" onChange={handleFile} className="hidden" id="routine-file" />
-        <label htmlFor="routine-file" className={`mt-4 inline-block btn-hero px-5 py-2.5 rounded-xl font-medium cursor-pointer ${busy ? "opacity-50 pointer-events-none" : ""}`}>
-          {busy ? "Processing…" : "Choose PDF"}
+        <label
+          htmlFor="routine-file"
+          className={`mt-4 inline-block btn-hero px-5 py-2.5 rounded-xl font-medium cursor-pointer ${busy ? "opacity-50 pointer-events-none" : ""}`}
+        >
+          {busy ? "প্রসেসিং…" : hasRoutine ? "নতুন PDF বেছে নাও" : "PDF বেছে নাও"}
         </label>
         {progress && <p className="mt-3 text-sm text-primary">{progress}</p>}
       </div>
 
-      {slots.length > 0 && (
+      {hasRoutine && (
         <>
           <div className="mt-8 flex items-center justify-between">
-            <h2 className="font-display text-xl">Parsed schedule · {slots.length} periods</h2>
-            <button onClick={() => nav({ to: "/free" })} className="btn-hero px-5 py-2 rounded-xl">Done →</button>
+            <h2 className="font-display text-xl">পার্স করা রুটিন · {slots.length}টি পিরিয়ড</h2>
+            <button onClick={() => nav({ to: "/free" })} className="btn-hero px-5 py-2 rounded-xl">শেষ →</button>
           </div>
           <div className="mt-4 grid md:grid-cols-2 gap-4">
             {[0, 1, 2, 3, 4, 5, 6].map((d) => {
