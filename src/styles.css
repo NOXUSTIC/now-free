@@ -48,7 +48,7 @@
   --color-mint-foreground: var(--mint-foreground);
 
   --font-bangla: "Hind Siliguri", system-ui, sans-serif;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
+   --font-display: "Space Grotesk", "Durbar", system-ui, sans-serif; 
 }
 
 :root {
