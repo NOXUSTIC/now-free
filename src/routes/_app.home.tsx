@@ -8,6 +8,13 @@ export const Route = createFileRoute("/_app/home")({
   component: HomePage,
 });
 
+const EXAM_TYPE_BN: Record<string, string> = {
+  mid: "মিডটার্ম",
+  midterm: "মিডটার্ম",
+  final: "ফাইনাল",
+  quiz: "কুইজ",
+};
+
 function HomePage() {
   const { user } = useAuth();
   const today = dhakaDayIndex();
@@ -53,25 +60,25 @@ function HomePage() {
     enabled: !!user,
   });
 
-  const firstName = (profile?.full_name || "there").split(" ")[0];
+  const firstName = (profile?.full_name || "বন্ধু").split(" ")[0];
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
       <h1 className="font-display text-3xl md:text-4xl">
-        স্বাগতম, <span className="text-primary">{firstName}</span> 👋
+        স্বাগতম, <span className="text-primary">{firstName}</span>
       </h1>
-      <p className="mt-2 text-muted-foreground">Today is {DAY_NAMES_BN[today]} · {nowInDhaka().toDateString().slice(4)}</p>
+      <p className="mt-2 text-muted-foreground">আজ {DAY_NAMES_BN[today]}বার · {nowInDhaka().toDateString().slice(4)}</p>
 
       <div className="mt-8 grid md:grid-cols-3 gap-5">
-        <Card title="Today's classes" badge={`${slots.length}`}>
+        <Card title="আজকের ক্লাস" badge={`${slots.length}`}>
           {slots.length === 0 ? (
-            <Empty msg="No classes today (or you haven't uploaded your routine)." cta={{ to: "/routine", label: "Upload routine" }} />
+            <Empty msg="আজ কোনো ক্লাস নেই (অথবা আপনি এখনো রুটিন আপলোড করেননি)।" cta={{ to: "/routine", label: "রুটিন আপলোড করুন" }} />
           ) : (
             <ul className="space-y-2">
               {slots.map((s) => (
                 <li key={s.id} className="flex justify-between gap-3 py-2 border-t first:border-t-0">
                   <div>
-                    <div className="font-medium">{s.course_code || "Class"}</div>
+                    <div className="font-medium">{s.course_code || "ক্লাস"}</div>
                     <div className="text-xs text-muted-foreground">{s.room || "—"}</div>
                   </div>
                   <div className="text-sm tabular-nums text-foreground/80">{fmt12(s.start_time)} – {fmt12(s.end_time)}</div>
@@ -82,26 +89,26 @@ function HomePage() {
         </Card>
 
         <Card title="এখন কে ফ্রি??" accent>
-          <p className="text-sm text-foreground/70">Tap the button to see classmates who are free right now.</p>
+          <p className="text-sm text-foreground/70">বোতামটিতে চাপ দিয়ে দেখুন এই মুহূর্তে কোন সহপাঠীরা ফ্রি আছেন।</p>
           <Link to="/free" className="btn-hero inline-flex mt-4 px-5 py-2.5 rounded-xl font-medium">
-            See free students →
+            ফ্রি শিক্ষার্থী দেখুন
           </Link>
         </Card>
 
-        <Card title="Next exam">
+        <Card title="পরবর্তী পরীক্ষা">
           {nextExam ? (
             <div>
               <div className="font-display text-lg">{nextExam.course_code}</div>
-              <div className="text-sm text-muted-foreground capitalize">{nextExam.exam_type} exam</div>
+              <div className="text-sm text-muted-foreground">{EXAM_TYPE_BN[nextExam.exam_type] ?? nextExam.exam_type} পরীক্ষা</div>
               <div className="mt-2 text-2xl font-display">{nextExam.exam_date}</div>
               <div className="text-xs text-muted-foreground">
-                {nextExam.start_time ? `${fmt12(nextExam.start_time)} – ${fmt12(nextExam.end_time || "")}` : "Time TBD"}
+                {nextExam.start_time ? `${fmt12(nextExam.start_time)} – ${fmt12(nextExam.end_time || "")}` : "সময় নির্ধারিত হয়নি"}
                 {nextExam.room ? ` · ${nextExam.room}` : ""}
               </div>
-              <Link to="/exams" className="mt-3 inline-block text-sm text-primary hover:underline">View all →</Link>
+              <Link to="/exams" className="mt-3 inline-block text-sm text-primary hover:underline">সব পরীক্ষা দেখুন</Link>
             </div>
           ) : (
-            <Empty msg="No upcoming exams parsed yet." cta={{ to: "/routine", label: "Upload routine" }} />
+            <Empty msg="এখনো কোনো আসন্ন পরীক্ষা পাওয়া যায়নি।" cta={{ to: "/routine", label: "রুটিন আপলোড করুন" }} />
           )}
         </Card>
       </div>
@@ -127,7 +134,7 @@ function Empty({ msg, cta }: { msg: string; cta?: { to: string; label: string } 
       {msg}
       {cta && (
         <div className="mt-3">
-          <Link to={cta.to} className="text-primary hover:underline text-sm">{cta.label} →</Link>
+          <Link to={cta.to} className="text-primary hover:underline text-sm">{cta.label}</Link>
         </div>
       )}
     </div>

@@ -16,6 +16,9 @@ type EventRow = {
   start_time: string | null; end_time: string | null; location: string;
 };
 
+const MONTHS_BN = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
+const DOW_BN = ["রবি","সোম","মঙ্গল","বুধ","বৃহঃ","শুক্র","শনি"];
+
 function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function addMonths(d: Date, n: number) { return new Date(d.getFullYear(), d.getMonth() + n, 1); }
 function fmtDate(d: Date) { return d.toISOString().slice(0, 10); }
@@ -46,7 +49,6 @@ function CalendarPage() {
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  // Build calendar grid
   const monthStart = cursor;
   const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
   const firstWeekday = monthStart.getDay();
@@ -69,21 +71,21 @@ function CalendarPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl">Calendar</h1>
-        <button onClick={() => setShowCreate(true)} className="btn-hero px-4 py-2 rounded-xl text-sm">+ New event</button>
+        <h1 className="font-display text-3xl">ক্যালেন্ডার</h1>
+        <button onClick={() => setShowCreate(true)} className="btn-hero px-4 py-2 rounded-xl text-sm">নতুন ইভেন্ট</button>
       </div>
 
       <div className="mt-6 grid md:grid-cols-[1fr_320px] gap-6">
         <div className="bg-card border rounded-2xl p-4 ring-soft">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => setCursor(addMonths(cursor, -1))} className="px-2 py-1 hover:bg-secondary rounded">‹</button>
+            <button onClick={() => setCursor(addMonths(cursor, -1))} className="px-3 py-1 hover:bg-secondary rounded text-sm">পূর্ববর্তী</button>
             <div className="font-display font-semibold">
-              {cursor.toLocaleString("en", { month: "long", year: "numeric" })}
+              {MONTHS_BN[cursor.getMonth()]} {cursor.getFullYear()}
             </div>
-            <button onClick={() => setCursor(addMonths(cursor, 1))} className="px-2 py-1 hover:bg-secondary rounded">›</button>
+            <button onClick={() => setCursor(addMonths(cursor, 1))} className="px-3 py-1 hover:bg-secondary rounded text-sm">পরবর্তী</button>
           </div>
           <div className="grid grid-cols-7 text-center text-xs text-muted-foreground mb-1">
-            {["S","M","T","W","T","F","S"].map((d, i) => <div key={i}>{d}</div>)}
+            {DOW_BN.map((d, i) => <div key={i}>{d}</div>)}
           </div>
           <div className="grid grid-cols-7 gap-1">
             {cells.map((cell, i) => {
@@ -112,9 +114,9 @@ function CalendarPage() {
 
         <div className="bg-card border rounded-2xl p-4 ring-soft">
           <h2 className="font-display font-semibold mb-1">{selected}</h2>
-          <p className="text-xs text-muted-foreground mb-4">{selectedEvents.length} event{selectedEvents.length === 1 ? "" : "s"}</p>
+          <p className="text-xs text-muted-foreground mb-4">{selectedEvents.length}টি ইভেন্ট</p>
           {selectedEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No events. Tap "+ New event" to add one.</p>
+            <p className="text-sm text-muted-foreground">কোনো ইভেন্ট নেই। উপরে "নতুন ইভেন্ট" বোতামে চাপ দিয়ে যোগ করুন।</p>
           ) : (
             <ul className="space-y-2">
               {selectedEvents.map((e) => (
@@ -123,7 +125,7 @@ function CalendarPage() {
                     <div>
                       <div className="font-medium">{e.title}</div>
                       <div className="text-xs text-muted-foreground">
-                        by {e.creator_name || "—"}
+                        {e.creator_name || "—"}
                         {e.start_time && ` · ${fmt12(e.start_time)}${e.end_time ? `–${fmt12(e.end_time)}` : ""}`}
                         {e.location && ` · ${e.location}`}
                       </div>
@@ -132,12 +134,12 @@ function CalendarPage() {
                     {e.creator_id === user?.id && (
                       <button
                         onClick={async () => {
-                          if (!confirm("Delete this event?")) return;
+                          if (!confirm("এই ইভেন্টটি মুছে ফেলবেন?")) return;
                           const { error } = await supabase.from("events").delete().eq("id", e.id);
                           if (error) toast.error(error.message);
                         }}
                         className="text-xs text-destructive hover:underline"
-                      >Delete</button>
+                      >মুছুন</button>
                     )}
                   </div>
                 </li>
@@ -166,7 +168,7 @@ function CreateEventModal({ date, onClose }: { date: string; onClose: () => void
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return toast.error("Title required");
+    if (!title.trim()) return toast.error("শিরোনাম দিতে হবে");
     setBusy(true);
     const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", user!.id).maybeSingle();
     const { error } = await supabase.from("events").insert({
@@ -181,25 +183,25 @@ function CreateEventModal({ date, onClose }: { date: string; onClose: () => void
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Event created");
+    toast.success("ইভেন্ট তৈরি হয়েছে");
     onClose();
   }
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="bg-card rounded-2xl p-6 w-full max-w-md space-y-3 ring-soft">
-        <h2 className="font-display text-xl">New event</h2>
-        <input className="w-full px-3 py-2 rounded-lg border bg-background" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <textarea className="w-full px-3 py-2 rounded-lg border bg-background" placeholder="Description (optional)" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <h2 className="font-display text-xl">নতুন ইভেন্ট</h2>
+        <input className="w-full px-3 py-2 rounded-lg border bg-background" placeholder="শিরোনাম" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <textarea className="w-full px-3 py-2 rounded-lg border bg-background" placeholder="বিবরণ (ঐচ্ছিক)" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         <div className="grid grid-cols-3 gap-2">
           <input type="date" className="px-3 py-2 rounded-lg border bg-background col-span-3" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
           <input type="time" className="px-3 py-2 rounded-lg border bg-background" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           <input type="time" className="px-3 py-2 rounded-lg border bg-background" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-          <input className="px-3 py-2 rounded-lg border bg-background" placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
+          <input className="px-3 py-2 rounded-lg border bg-background" placeholder="স্থান" value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg hover:bg-secondary">Cancel</button>
-          <button disabled={busy} className="btn-hero px-4 py-2 rounded-lg">{busy ? "Saving…" : "Create"}</button>
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg hover:bg-secondary">বাতিল</button>
+          <button disabled={busy} className="btn-hero px-4 py-2 rounded-lg">{busy ? "সংরক্ষণ হচ্ছে…" : "তৈরি করুন"}</button>
         </div>
       </form>
     </div>

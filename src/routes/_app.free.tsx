@@ -47,7 +47,7 @@ function FreePage() {
     await loadData();
   }
 
-  // Realtime: presence channel + routine_slots changes
+  // Presence-driven realtime: sync/join/leave + DB changes. No fixed polling.
   useEffect(() => {
     if (!revealed || !user) return;
 
@@ -55,11 +55,15 @@ function FreePage() {
       config: { presence: { key: user.id } },
     });
 
+    const syncOnline = () => {
+      const state = channel.presenceState();
+      setOnlineIds(new Set(Object.keys(state)));
+    };
+
     channel
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        setOnlineIds(new Set(Object.keys(state)));
-      })
+      .on("presence", { event: "sync" }, syncOnline)
+      .on("presence", { event: "join" }, syncOnline)
+      .on("presence", { event: "leave" }, syncOnline)
       .on("postgres_changes", { event: "*", schema: "public", table: "routine_slots" }, () => {
         loadData();
       })
@@ -77,14 +81,34 @@ function FreePage() {
     };
   }, [revealed, user]);
 
-  // Recompute exactly at the next minute boundary (no fixed 15s interval)
+  // Recompute only at the next class-boundary instant (no fixed interval).
   useEffect(() => {
     if (!revealed) return;
-    const now = new Date();
-    const msToNextMinute = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
-    timerRef.current = setTimeout(() => setTick((t) => t + 1), msToNextMinute + 50);
+    const now = nowInDhaka();
+    const today = dhakaDayIndex(now);
+    const time = dhakaTimeString(now);
+    const boundaries = new Set<string>();
+    for (const s of allSlots) {
+      if (s.day_of_week !== today) continue;
+      if (s.start_time > time) boundaries.add(s.start_time);
+      if (s.end_time > time) boundaries.add(s.end_time);
+    }
+    const next = [...boundaries].sort()[0];
+    let ms: number;
+    if (next) {
+      const [h, m, sec] = next.split(":").map(Number);
+      const target = new Date(now);
+      target.setHours(h, m, sec || 0, 0);
+      ms = Math.max(1000, target.getTime() - now.getTime() + 200);
+    } else {
+      // No more class today — wake at midnight to refresh the day index.
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 5, 0);
+      ms = midnight.getTime() - now.getTime();
+    }
+    timerRef.current = setTimeout(() => setTick((t) => t + 1), ms);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [revealed, tick]);
+  }, [revealed, tick, allSlots]);
 
   const now = nowInDhaka();
   const today = dhakaDayIndex(now);
@@ -134,28 +158,28 @@ function FreePage() {
             এখন কে ফ্রি??
           </button>
           <p className="mt-4 text-sm text-muted-foreground">
-            বাটনে চাপ দিয়ে দেখো এই মুহূর্তে কারা ফ্রি আছে।
+            বোতামটিতে চাপ দিয়ে দেখুন এই মুহূর্তে কারা ফ্রি আছেন।
           </p>
         </div>
       ) : (
         <div className="mt-10">
           {loading && profiles.length === 0 ? (
-            <p className="text-center text-muted-foreground">খুঁজছি…</p>
+            <p className="text-center text-muted-foreground">অনুসন্ধান চলছে…</p>
           ) : freeUsers.length === 0 ? (
             <div className="text-center bg-card border rounded-2xl p-8 ring-soft">
-              <p className="text-muted-foreground">এই মুহূর্তে কেউ অনলাইন ও ফ্রি নেই।</p>
+              <p className="text-muted-foreground">এই মুহূর্তে কেউ অনলাইনে এবং ফ্রি নেই।</p>
               <p className="text-xs text-muted-foreground mt-2">
-                শুধু যারা রুটিন আপলোড করেছে এবং এখন অনলাইনে আছে তারা দেখা যাবে।
+                যাঁরা রুটিন আপলোড করেছেন এবং এই মুহূর্তে অনলাইনে আছেন, শুধু তাঁদেরই দেখানো হবে।
               </p>
               <Link to="/routine" className="mt-4 inline-block text-primary text-sm hover:underline">
-                তোমার রুটিন আপলোড করো →
+                আপনার রুটিন আপলোড করুন
               </Link>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm text-muted-foreground">
-                  এই মুহূর্তে {freeUsers.length} জন ফ্রি · লাইভ
+                  এই মুহূর্তে {freeUsers.length} জন ফ্রি · সরাসরি
                 </span>
                 <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[oklch(0.7_0.18_150)] animate-pulse" />
@@ -171,7 +195,7 @@ function FreePage() {
                     <div className="flex-1">
                       <div className="font-medium">
                         {p.full_name || p.email.split("@")[0]}
-                        {p.id === user?.id && <span className="ml-2 text-xs text-muted-foreground">(তুমি)</span>}
+                        {p.id === user?.id && <span className="ml-2 text-xs text-muted-foreground">(আপনি)</span>}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {next
