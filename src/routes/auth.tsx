@@ -15,7 +15,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "সাইন ইন — এখন কে ফ্রি??" },
-      { name: "description", content: "তোমার স্টুডেন্ট ইমেইল দিয়ে লগ ইন বা সাইন আপ করো।" },
+      { name: "description", content: "আপনার স্টুডেন্ট ইমেইল দিয়ে লগ ইন বা সাইন আপ করুন।" },
     ],
   }),
   component: AuthPage,
@@ -40,11 +40,11 @@ function AuthPage() {
         <Link to="/" className="font-display text-xl text-primary">এখন কে ফ্রি??</Link>
         <div>
           <h1 className="font-display text-5xl text-primary leading-tight">
-            দেখো এই মুহূর্তে <br /> কারা ফ্রি আছে।
+            দেখুন এই মুহূর্তে <br /> কারা ফ্রি আছেন।
           </h1>
           <p className="mt-4 text-primary/70 max-w-md">
-            একবার তোমার রুটিন আপলোড করো। তোমার ফ্রি পিরিয়ড, বন্ধুদের ফ্রি পিরিয়ড আর
-            আসন্ন পরীক্ষার রিমাইন্ডার সব এক জায়গায়।
+            একবার আপনার রুটিন আপলোড করুন। আপনার ফ্রি পিরিয়ড, বন্ধুদের ফ্রি পিরিয়ড এবং
+            আসন্ন পরীক্ষার রিমাইন্ডার একই জায়গায় পাবেন।
           </p>
         </div>
         <p className="text-xs text-primary/60">@g.bracu.ac.bd</p>
@@ -91,7 +91,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("আবার স্বাগতম!");
+    toast.success("পুনরায় স্বাগতম!");
     nav({ to: "/home" });
   }
 
@@ -104,7 +104,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
         {busy ? "সাইন ইন হচ্ছে…" : "লগ ইন"}
       </button>
       <button type="button" onClick={onForgot} className="text-sm text-primary hover:underline w-full text-center">
-        পাসওয়ার্ড ভুলে গেছ?
+        পাসওয়ার্ড ভুলে গেছেন?
       </button>
     </form>
   );
@@ -119,10 +119,10 @@ function SignupForm({ onDone }: { onDone: () => void }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!BRACU_EMAIL_RE.test(email)) return toast.error("দয়া করে তোমার @g.bracu.ac.bd ইমেইল ব্যবহার করো");
+    if (!BRACU_EMAIL_RE.test(email)) return toast.error("অনুগ্রহ করে আপনার @g.bracu.ac.bd ইমেইল ব্যবহার করুন");
     if (password.length < 6) return toast.error("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     if (password !== confirm) return toast.error("পাসওয়ার্ড মিলছে না");
-    if (name.trim().length < 2) return toast.error("তোমার পুরো নাম লেখো");
+    if (name.trim().length < 2) return toast.error("আপনার পুরো নাম লিখুন");
 
     setBusy(true);
     const redirect = `${window.location.origin}/home`;
@@ -133,22 +133,22 @@ function SignupForm({ onDone }: { onDone: () => void }) {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("অ্যাকাউন্ট তৈরি হয়েছে! ইমেইলে কনফার্মেশন লিঙ্ক চেক করো।");
+    toast.success("অ্যাকাউন্ট তৈরি হয়েছে! ইমেইলে পাঠানো কনফার্মেশন লিঙ্কটি দেখুন।");
     onDone();
   }
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <h2 className="font-display text-2xl">অ্যাকাউন্ট খোলো</h2>
+      <h2 className="font-display text-2xl">অ্যাকাউন্ট খুলুন</h2>
       <Field label="পুরো নাম" value={name} onChange={setName} required />
       <Field label="স্টুডেন্ট ইমেইল" type="email" value={email} onChange={setEmail} placeholder="name@g.bracu.ac.bd" required />
       <Field label="পাসওয়ার্ড" type="password" value={password} onChange={setPassword} required />
-      <Field label="পাসওয়ার্ড নিশ্চিত করো" type="password" value={confirm} onChange={setConfirm} required />
+      <Field label="পাসওয়ার্ড নিশ্চিত করুন" type="password" value={confirm} onChange={setConfirm} required />
       <button disabled={busy} className="btn-hero w-full py-3 rounded-xl font-medium">
         {busy ? "তৈরি হচ্ছে…" : "সাইন আপ"}
       </button>
       <p className="text-xs text-muted-foreground text-center">
-        ইমেইল শেষ হতে হবে <span className="font-mono">@g.bracu.ac.bd</span> দিয়ে। কনফার্মেশন ইমেইল পাঠানো হবে।
+        ইমেইলের শেষে অবশ্যই <span className="font-mono">@g.bracu.ac.bd</span> থাকতে হবে। একটি কনফার্মেশন ইমেইল পাঠানো হবে।
       </p>
     </form>
   );
@@ -172,27 +172,27 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
   function verifyCaptcha(e: React.FormEvent) {
     e.preventDefault();
     if (Number(guess) !== captcha.answer) {
-      toast.error("ক্যাপচা ভুল হয়েছে। আবার চেষ্টা করো।");
+      toast.error("ক্যাপচা ভুল হয়েছে। আবার চেষ্টা করুন।");
       setCaptcha(makeCaptcha());
       setGuess("");
       return;
     }
     setSolved(true);
-    toast.success("ক্যাপচা সঠিক। এবার নতুন পাসওয়ার্ড দাও।");
+    toast.success("ক্যাপচা সঠিক। এবার নতুন পাসওয়ার্ড দিন।");
   }
 
   async function doReset(e: React.FormEvent) {
     e.preventDefault();
-    if (!BRACU_EMAIL_RE.test(email)) return toast.error("তোমার @g.bracu.ac.bd ইমেইল ব্যবহার করো");
+    if (!BRACU_EMAIL_RE.test(email)) return toast.error("আপনার @g.bracu.ac.bd ইমেইল ব্যবহার করুন");
     if (password.length < 6) return toast.error("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     if (password !== confirm) return toast.error("পাসওয়ার্ড মিলছে না");
     setBusy(true);
     try {
       await resetPasswordDirect({ data: { email, password } });
-      toast.success("পাসওয়ার্ড পরিবর্তন হয়েছে। এবার লগ ইন করো।");
+      toast.success("পাসওয়ার্ড পরিবর্তন হয়েছে। এবার লগ ইন করুন।");
       onBack();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "রিসেট ব্যর্থ হয়েছে");
+      toast.error(err instanceof Error ? err.message : "পাসওয়ার্ড রিসেট ব্যর্থ হয়েছে");
     } finally {
       setBusy(false);
     }
@@ -203,8 +203,8 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
       <h2 className="font-display text-2xl">পাসওয়ার্ড রিসেট</h2>
       <p className="text-sm text-muted-foreground">
         {solved
-          ? "ক্যাপচা সঠিক। নতুন পাসওয়ার্ড সেট করো।"
-          : "প্রথমে নিচের ক্যাপচাটি সমাধান করো। সঠিক হলে নতুন পাসওয়ার্ড সেট করতে পারবে।"}
+          ? "ক্যাপচা সঠিক। নতুন পাসওয়ার্ড সেট করুন।"
+          : "প্রথমে নিচের ক্যাপচাটি সমাধান করুন। সঠিক হলে নতুন পাসওয়ার্ড সেট করতে পারবেন।"}
       </p>
 
       {!solved ? (
@@ -234,21 +234,21 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
               />
             </div>
           </div>
-          <button className="btn-hero w-full py-3 rounded-xl font-medium">যাচাই করো</button>
+          <button className="btn-hero w-full py-3 rounded-xl font-medium">যাচাই করুন</button>
           <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground w-full text-center">
-            লগ ইনে ফিরে যাও
+            লগ ইনে ফিরে যান
           </button>
         </form>
       ) : (
         <form onSubmit={doReset} className="space-y-4">
           <Field label="স্টুডেন্ট ইমেইল" type="email" value={email} onChange={setEmail} placeholder="name@g.bracu.ac.bd" required />
           <Field label="নতুন পাসওয়ার্ড" type="password" value={password} onChange={setPassword} required />
-          <Field label="পাসওয়ার্ড নিশ্চিত করো" type="password" value={confirm} onChange={setConfirm} required />
+          <Field label="পাসওয়ার্ড নিশ্চিত করুন" type="password" value={confirm} onChange={setConfirm} required />
           <button disabled={busy} className="btn-hero w-full py-3 rounded-xl font-medium">
-            {busy ? "রিসেট হচ্ছে…" : "পাসওয়ার্ড রিসেট করো"}
+            {busy ? "রিসেট হচ্ছে…" : "পাসওয়ার্ড রিসেট করুন"}
           </button>
           <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground w-full text-center">
-            লগ ইনে ফিরে যাও
+            লগ ইনে ফিরে যান
           </button>
         </form>
       )}
