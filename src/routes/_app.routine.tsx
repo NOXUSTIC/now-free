@@ -166,13 +166,22 @@ function RoutinePage() {
           </p>
         </div>
         {hasRoutine && (
-          <button
-            onClick={triggerPicker}
-            disabled={busy}
-            className="btn-hero px-4 py-2 rounded-xl text-sm whitespace-nowrap disabled:opacity-50"
-          >
-            {busy ? "প্রসেসিং…" : "রুটিন পুনরায় আপলোড করুন"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={triggerPicker}
+              disabled={busy || deleting}
+              className="btn-hero px-4 py-2 rounded-xl text-sm whitespace-nowrap disabled:opacity-50"
+            >
+              {busy ? "প্রসেসিং…" : "রুটিন পুনরায় আপলোড করুন"}
+            </button>
+            <button
+              onClick={handleDeleteRoutine}
+              disabled={busy || deleting}
+              className="px-4 py-2 rounded-xl text-sm whitespace-nowrap border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              {deleting ? "মুছে ফেলা হচ্ছে…" : "রুটিন স্থায়ীভাবে মুছে ফেলুন"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -190,6 +199,26 @@ function RoutinePage() {
         </label>
         {progress && <p className="mt-3 text-sm text-primary">{progress}</p>}
       </div>
+
+      {errorDetail && (
+        <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-destructive">রুটিন বিশ্লেষণে সমস্যা হয়েছে</p>
+              <p className="mt-1 text-sm text-foreground/80 whitespace-pre-wrap break-words">{errorDetail}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                পরামর্শ: PDF টি যেন USIS থেকে সরাসরি ডাউনলোড করা হয়, পাসওয়ার্ড-সুরক্ষিত না হয়, এবং পাঠযোগ্য টেক্সট থাকে। স্ক্যান করা ছবি হলে তা OCR করে আবার চেষ্টা করুন।
+              </p>
+            </div>
+            <button
+              onClick={() => setErrorDetail("")}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              বন্ধ
+            </button>
+          </div>
+        </div>
+      )}
 
       {hasRoutine && (
         <>
