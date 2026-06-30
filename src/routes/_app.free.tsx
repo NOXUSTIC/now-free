@@ -76,6 +76,9 @@ function FreePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
         loadData();
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, () => {
+        loadData();
+      })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           await channel.track({ online_at: new Date().toISOString() });
