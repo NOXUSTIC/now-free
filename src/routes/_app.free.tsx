@@ -13,6 +13,9 @@ type Slot = {
   id: string; user_id: string; day_of_week: number; start_time: string; end_time: string;
   course_code: string; section: string; room: string;
 };
+type Friendship = {
+  id: string; requester_id: string; addressee_id: string; status: "pending" | "accepted";
+};
 
 function nextClassFor(userSlots: Slot[], dayIdx: number, time: string): Slot | null {
   const todays = userSlots
@@ -26,6 +29,7 @@ function FreePage() {
   const [revealed, setRevealed] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allSlots, setAllSlots] = useState<Slot[]>([]);
+  const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,12 +37,14 @@ function FreePage() {
 
   async function loadData() {
     setLoading(true);
-    const [{ data: ps }, { data: ss }] = await Promise.all([
+    const [{ data: ps }, { data: ss }, { data: fs }] = await Promise.all([
       supabase.from("profiles").select("id,full_name,email"),
       supabase.from("routine_slots").select("*"),
+      supabase.from("friendships").select("*").eq("status", "accepted"),
     ]);
     setProfiles((ps as Profile[]) ?? []);
     setAllSlots((ss as Slot[]) ?? []);
+    setFriendships((fs as Friendship[]) ?? []);
     setLoading(false);
   }
 
@@ -68,6 +74,9 @@ function FreePage() {
         loadData();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        loadData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, () => {
         loadData();
       })
       .subscribe(async (status) => {
@@ -125,8 +134,19 @@ function FreePage() {
     return m;
   }, [allSlots]);
 
+  const friendIds = useMemo(() => {
+    const s = new Set<string>();
+    if (!user) return s;
+    for (const f of friendships) {
+      if (f.status !== "accepted") continue;
+      s.add(f.requester_id === user.id ? f.addressee_id : f.requester_id);
+    }
+    s.add(user.id);
+    return s;
+  }, [friendships, user]);
+
   const freeUsers = profiles
-    .filter((p) => slotsByUser.has(p.id) && onlineIds.has(p.id))
+    .filter((p) => friendIds.has(p.id) && slotsByUser.has(p.id) && onlineIds.has(p.id))
     .map((p) => {
       const slots = slotsByUser.get(p.id)!;
       const inClass = slots.find(
@@ -167,13 +187,18 @@ function FreePage() {
             <p className="text-center text-muted-foreground">অনুসন্ধান চলছে…</p>
           ) : freeUsers.length === 0 ? (
             <div className="text-center bg-card border rounded-2xl p-8 ring-soft">
-              <p className="text-muted-foreground">এই মুহূর্তে কেউ অনলাইনে এবং ফ্রি নেই।</p>
+              <p className="text-muted-foreground">এই মুহূর্তে আপনার কোনো বন্ধু অনলাইনে এবং ফ্রি নেই।</p>
               <p className="text-xs text-muted-foreground mt-2">
-                যাঁরা রুটিন আপলোড করেছেন এবং এই মুহূর্তে অনলাইনে আছেন, শুধু তাঁদেরই দেখানো হবে।
+                শুধুমাত্র আপনার বন্ধুরা যাঁরা রুটিন আপলোড করেছেন এবং এই মুহূর্তে অনলাইনে আছেন, তাঁদেরই দেখানো হবে।
               </p>
-              <Link to="/routine" className="mt-4 inline-block text-primary text-sm hover:underline">
-                আপনার রুটিন আপলোড করুন
-              </Link>
+              <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+                <Link to="/friends" className="text-primary hover:underline">
+                  বন্ধু খুঁজুন ও যোগ করুন
+                </Link>
+                <Link to="/routine" className="text-primary hover:underline">
+                  রুটিন আপলোড করুন
+                </Link>
+              </div>
             </div>
           ) : (
             <>

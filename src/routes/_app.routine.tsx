@@ -44,6 +44,8 @@ function RoutinePage() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string>("");
+  const [errorDetail, setErrorDetail] = useState<string>("");
+  const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: slots = [] } = useQuery({
@@ -68,6 +70,7 @@ function RoutinePage() {
     if (f.size > 8 * 1024 * 1024) return toast.error("PDF ফাইলটি অনেক বড় (সর্বোচ্চ ৮ মেগাবাইট)");
 
     setBusy(true);
+    setErrorDetail("");
     setProgress("ফাইল পড়া হচ্ছে…");
     try {
       const buf = await f.arrayBuffer();
@@ -86,23 +89,49 @@ function RoutinePage() {
       if (parsed.slots.length) {
         const rows = parsed.slots.map((s) => ({ ...s, user_id: user!.id }));
         const { error } = await supabase.from("routine_slots").insert(rows);
-        if (error) throw error;
+        if (error) throw new Error(`ডাটাবেইজে সংরক্ষণ ব্যর্থ: ${error.message}`);
       }
       if (parsed.exams.length) {
         const rows = parsed.exams.map((e) => ({ ...e, user_id: user!.id }));
         const { error } = await supabase.from("exams").insert(rows);
-        if (error) throw error;
+        if (error) throw new Error(`পরীক্ষা সংরক্ষণ ব্যর্থ: ${error.message}`);
       }
       qc.invalidateQueries();
       toast.success(`${parsed.slots.length}টি ক্লাস ও ${parsed.exams.length}টি পরীক্ষা শনাক্ত করা হয়েছে।`);
       setProgress("");
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : "রুটিন বিশ্লেষণ করা যায়নি");
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("রুটিন বিশ্লেষণ ব্যর্থ হয়েছে");
+      setErrorDetail(msg);
       setProgress("");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteRoutine() {
+    if (!user) return;
+    const ok = window.confirm(
+      "আপনি কি নিশ্চিত? আপনার রুটিন, সমস্ত ক্লাস এবং পরীক্ষার তথ্য স্থায়ীভাবে মুছে যাবে।",
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const [r1, r2] = await Promise.all([
+        supabase.from("routine_slots").delete().eq("user_id", user.id),
+        supabase.from("exams").delete().eq("user_id", user.id),
+      ]);
+      if (r1.error) throw r1.error;
+      if (r2.error) throw r2.error;
+      qc.invalidateQueries();
+      toast.success("রুটিন ও সংশ্লিষ্ট তথ্য মুছে ফেলা হয়েছে।");
+      setErrorDetail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "মুছে ফেলা যায়নি");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -137,13 +166,22 @@ function RoutinePage() {
           </p>
         </div>
         {hasRoutine && (
-          <button
-            onClick={triggerPicker}
-            disabled={busy}
-            className="btn-hero px-4 py-2 rounded-xl text-sm whitespace-nowrap disabled:opacity-50"
-          >
-            {busy ? "প্রসেসিং…" : "রুটিন পুনরায় আপলোড করুন"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={triggerPicker}
+              disabled={busy || deleting}
+              className="btn-hero px-4 py-2 rounded-xl text-sm whitespace-nowrap disabled:opacity-50"
+            >
+              {busy ? "প্রসেসিং…" : "রুটিন পুনরায় আপলোড করুন"}
+            </button>
+            <button
+              onClick={handleDeleteRoutine}
+              disabled={busy || deleting}
+              className="px-4 py-2 rounded-xl text-sm whitespace-nowrap border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              {deleting ? "মুছে ফেলা হচ্ছে…" : "রুটিন স্থায়ীভাবে মুছে ফেলুন"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -161,6 +199,26 @@ function RoutinePage() {
         </label>
         {progress && <p className="mt-3 text-sm text-primary">{progress}</p>}
       </div>
+
+      {errorDetail && (
+        <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-destructive">রুটিন বিশ্লেষণে সমস্যা হয়েছে</p>
+              <p className="mt-1 text-sm text-foreground/80 whitespace-pre-wrap break-words">{errorDetail}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                পরামর্শ: PDF টি যেন USIS থেকে সরাসরি ডাউনলোড করা হয়, পাসওয়ার্ড-সুরক্ষিত না হয়, এবং পাঠযোগ্য টেক্সট থাকে। স্ক্যান করা ছবি হলে তা OCR করে আবার চেষ্টা করুন।
+              </p>
+            </div>
+            <button
+              onClick={() => setErrorDetail("")}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              বন্ধ
+            </button>
+          </div>
+        </div>
+      )}
 
       {hasRoutine && (
         <>
