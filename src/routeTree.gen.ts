@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRoutineRouteImport } from './routes/_app.routine'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
+import { Route as AppFriendsRouteImport } from './routes/_app.friends'
 import { Route as AppFreeRouteImport } from './routes/_app.free'
 import { Route as AppExamsRouteImport } from './routes/_app.exams'
 import { Route as AppCalendarRouteImport } from './routes/_app.calendar'
@@ -48,6 +49,11 @@ const AppHomeRoute = AppHomeRouteImport.update({
   path: '/home',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFriendsRoute = AppFriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFreeRoute = AppFreeRouteImport.update({
   id: '/free',
   path: '/free',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AppCalendarRoute
   '/exams': typeof AppExamsRoute
   '/free': typeof AppFreeRoute
+  '/friends': typeof AppFriendsRoute
   '/home': typeof AppHomeRoute
   '/routine': typeof AppRoutineRoute
 }
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AppCalendarRoute
   '/exams': typeof AppExamsRoute
   '/free': typeof AppFreeRoute
+  '/friends': typeof AppFriendsRoute
   '/home': typeof AppHomeRoute
   '/routine': typeof AppRoutineRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/exams': typeof AppExamsRoute
   '/_app/free': typeof AppFreeRoute
+  '/_app/friends': typeof AppFriendsRoute
   '/_app/home': typeof AppHomeRoute
   '/_app/routine': typeof AppRoutineRoute
 }
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/exams'
     | '/free'
+    | '/friends'
     | '/home'
     | '/routine'
   fileRoutesByTo: FileRoutesByTo
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/exams'
     | '/free'
+    | '/friends'
     | '/home'
     | '/routine'
   id:
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_app/calendar'
     | '/_app/exams'
     | '/_app/free'
+    | '/_app/friends'
     | '/_app/home'
     | '/_app/routine'
   fileRoutesById: FileRoutesById
@@ -181,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHomeRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/friends': {
+      id: '/_app/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof AppFriendsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/free': {
       id: '/_app/free'
       path: '/free'
@@ -209,6 +228,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppExamsRoute: typeof AppExamsRoute
   AppFreeRoute: typeof AppFreeRoute
+  AppFriendsRoute: typeof AppFriendsRoute
   AppHomeRoute: typeof AppHomeRoute
   AppRoutineRoute: typeof AppRoutineRoute
 }
@@ -217,6 +237,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppExamsRoute: AppExamsRoute,
   AppFreeRoute: AppFreeRoute,
+  AppFriendsRoute: AppFriendsRoute,
   AppHomeRoute: AppHomeRoute,
   AppRoutineRoute: AppRoutineRoute,
 }

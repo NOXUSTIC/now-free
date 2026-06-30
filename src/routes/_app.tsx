@@ -27,6 +27,7 @@ function AppShell() {
   const tabs = [
     { to: "/home", label: "হোম", en: "Home" },
     { to: "/free", label: "এখন কে ফ্রি??", en: "Free now" },
+    { to: "/friends", label: "বন্ধু", en: "Friends" },
     { to: "/calendar", label: "ক্যালেন্ডার", en: "Calendar" },
     { to: "/exams", label: "পরীক্ষা", en: "Exams" },
     { to: "/routine", label: "রুটিন", en: "Routine" },
