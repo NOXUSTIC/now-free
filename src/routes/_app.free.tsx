@@ -134,8 +134,19 @@ function FreePage() {
     return m;
   }, [allSlots]);
 
+  const friendIds = useMemo(() => {
+    const s = new Set<string>();
+    if (!user) return s;
+    for (const f of friendships) {
+      if (f.status !== "accepted") continue;
+      s.add(f.requester_id === user.id ? f.addressee_id : f.requester_id);
+    }
+    s.add(user.id);
+    return s;
+  }, [friendships, user]);
+
   const freeUsers = profiles
-    .filter((p) => slotsByUser.has(p.id) && onlineIds.has(p.id))
+    .filter((p) => friendIds.has(p.id) && slotsByUser.has(p.id) && onlineIds.has(p.id))
     .map((p) => {
       const slots = slotsByUser.get(p.id)!;
       const inClass = slots.find(
