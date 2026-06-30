@@ -107,11 +107,21 @@ export const parseRoutinePdf = createServerFn({ method: "POST" })
     if (!res.ok) {
       const txt = await res.text();
       console.error("AI gateway error", res.status, txt);
-      throw new Error(`AI gateway error ${res.status}`);
+      let detail = txt;
+      try {
+        const j = JSON.parse(txt);
+        detail = j?.error?.message || j?.message || txt;
+      } catch { /* ignore */ }
+      if (res.status === 429) throw new Error("সাময়িকভাবে অনুরোধ সীমা অতিক্রম করেছে — কিছুক্ষণ পরে আবার চেষ্টা করুন (HTTP 429)");
+      if (res.status === 402) throw new Error("AI সেবার ক্রেডিট শেষ — অ্যাডমিনকে জানান (HTTP 402)");
+      throw new Error(`AI গেটওয়ে ত্রুটি ${res.status}: ${detail.slice(0, 300)}`);
     }
 
     const json = await res.json();
     const content: string = json?.choices?.[0]?.message?.content ?? "";
+    if (!content) {
+      throw new Error("AI মডেল থেকে কোনো উত্তর পাওয়া যায়নি। PDF টি পাঠযোগ্য কিনা যাচাই করুন।");
+    }
 
     // Strip code fences if present
     const cleaned = content
@@ -124,13 +134,20 @@ export const parseRoutinePdf = createServerFn({ method: "POST" })
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      // try to find first { ... last }
       const start = cleaned.indexOf("{");
       const end = cleaned.lastIndexOf("}");
       if (start >= 0 && end > start) {
-        parsed = JSON.parse(cleaned.slice(start, end + 1));
+        try {
+          parsed = JSON.parse(cleaned.slice(start, end + 1));
+        } catch (e) {
+          throw new Error(
+            `মডেলের উত্তরে বৈধ JSON পাওয়া যায়নি। বিস্তারিত: ${(e as Error).message}. উত্তরের শুরু: "${cleaned.slice(0, 160)}"`,
+          );
+        }
       } else {
-        throw new Error("Model did not return valid JSON");
+        throw new Error(
+          `মডেল JSON ফেরত দেয়নি। উত্তরের শুরু: "${cleaned.slice(0, 200)}"`,
+        );
       }
     }
 
@@ -138,7 +155,14 @@ export const parseRoutinePdf = createServerFn({ method: "POST" })
       slots: z.array(SlotSchema).default([]),
       exams: z.array(ExamSchema).default([]),
     });
-    const out = shape.parse(parsed);
+    let out;
+    try {
+      out = shape.parse(parsed);
+    } catch (e) {
+      const zerr = e as z.ZodError;
+      const issues = (zerr.issues ?? []).slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join(" | ");
+      throw new Error(`রুটিনের কাঠামো যাচাই ব্যর্থ — ${issues || (e as Error).message}`);
+    }
 
     // normalize HH:MM -> HH:MM:00
     const norm = (t: string) => (t.length === 5 ? `${t}:00` : t);
