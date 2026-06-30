@@ -44,6 +44,8 @@ function RoutinePage() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string>("");
+  const [errorDetail, setErrorDetail] = useState<string>("");
+  const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: slots = [] } = useQuery({
