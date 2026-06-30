@@ -13,6 +13,9 @@ type Slot = {
   id: string; user_id: string; day_of_week: number; start_time: string; end_time: string;
   course_code: string; section: string; room: string;
 };
+type Friendship = {
+  id: string; requester_id: string; addressee_id: string; status: "pending" | "accepted";
+};
 
 function nextClassFor(userSlots: Slot[], dayIdx: number, time: string): Slot | null {
   const todays = userSlots
@@ -26,6 +29,7 @@ function FreePage() {
   const [revealed, setRevealed] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allSlots, setAllSlots] = useState<Slot[]>([]);
+  const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,12 +37,14 @@ function FreePage() {
 
   async function loadData() {
     setLoading(true);
-    const [{ data: ps }, { data: ss }] = await Promise.all([
+    const [{ data: ps }, { data: ss }, { data: fs }] = await Promise.all([
       supabase.from("profiles").select("id,full_name,email"),
       supabase.from("routine_slots").select("*"),
+      supabase.from("friendships").select("*").eq("status", "accepted"),
     ]);
     setProfiles((ps as Profile[]) ?? []);
     setAllSlots((ss as Slot[]) ?? []);
+    setFriendships((fs as Friendship[]) ?? []);
     setLoading(false);
   }
 
