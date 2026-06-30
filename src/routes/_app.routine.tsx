@@ -70,6 +70,7 @@ function RoutinePage() {
     if (f.size > 8 * 1024 * 1024) return toast.error("PDF ফাইলটি অনেক বড় (সর্বোচ্চ ৮ মেগাবাইট)");
 
     setBusy(true);
+    setErrorDetail("");
     setProgress("ফাইল পড়া হচ্ছে…");
     try {
       const buf = await f.arrayBuffer();
@@ -88,23 +89,49 @@ function RoutinePage() {
       if (parsed.slots.length) {
         const rows = parsed.slots.map((s) => ({ ...s, user_id: user!.id }));
         const { error } = await supabase.from("routine_slots").insert(rows);
-        if (error) throw error;
+        if (error) throw new Error(`ডাটাবেইজে সংরক্ষণ ব্যর্থ: ${error.message}`);
       }
       if (parsed.exams.length) {
         const rows = parsed.exams.map((e) => ({ ...e, user_id: user!.id }));
         const { error } = await supabase.from("exams").insert(rows);
-        if (error) throw error;
+        if (error) throw new Error(`পরীক্ষা সংরক্ষণ ব্যর্থ: ${error.message}`);
       }
       qc.invalidateQueries();
       toast.success(`${parsed.slots.length}টি ক্লাস ও ${parsed.exams.length}টি পরীক্ষা শনাক্ত করা হয়েছে।`);
       setProgress("");
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : "রুটিন বিশ্লেষণ করা যায়নি");
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("রুটিন বিশ্লেষণ ব্যর্থ হয়েছে");
+      setErrorDetail(msg);
       setProgress("");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteRoutine() {
+    if (!user) return;
+    const ok = window.confirm(
+      "আপনি কি নিশ্চিত? আপনার রুটিন, সমস্ত ক্লাস এবং পরীক্ষার তথ্য স্থায়ীভাবে মুছে যাবে।",
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const [r1, r2] = await Promise.all([
+        supabase.from("routine_slots").delete().eq("user_id", user.id),
+        supabase.from("exams").delete().eq("user_id", user.id),
+      ]);
+      if (r1.error) throw r1.error;
+      if (r2.error) throw r2.error;
+      qc.invalidateQueries();
+      toast.success("রুটিন ও সংশ্লিষ্ট তথ্য মুছে ফেলা হয়েছে।");
+      setErrorDetail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "মুছে ফেলা যায়নি");
+    } finally {
+      setDeleting(false);
     }
   }
 
