@@ -187,13 +187,18 @@ function FreePage() {
             <p className="text-center text-muted-foreground">অনুসন্ধান চলছে…</p>
           ) : freeUsers.length === 0 ? (
             <div className="text-center bg-card border rounded-2xl p-8 ring-soft">
-              <p className="text-muted-foreground">এই মুহূর্তে কেউ অনলাইনে এবং ফ্রি নেই।</p>
+              <p className="text-muted-foreground">এই মুহূর্তে আপনার কোনো বন্ধু অনলাইনে এবং ফ্রি নেই।</p>
               <p className="text-xs text-muted-foreground mt-2">
-                যাঁরা রুটিন আপলোড করেছেন এবং এই মুহূর্তে অনলাইনে আছেন, শুধু তাঁদেরই দেখানো হবে।
+                শুধুমাত্র আপনার বন্ধুরা যাঁরা রুটিন আপলোড করেছেন এবং এই মুহূর্তে অনলাইনে আছেন, তাঁদেরই দেখানো হবে।
               </p>
-              <Link to="/routine" className="mt-4 inline-block text-primary text-sm hover:underline">
-                আপনার রুটিন আপলোড করুন
-              </Link>
+              <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+                <Link to="/friends" className="text-primary hover:underline">
+                  বন্ধু খুঁজুন ও যোগ করুন
+                </Link>
+                <Link to="/routine" className="text-primary hover:underline">
+                  রুটিন আপলোড করুন
+                </Link>
+              </div>
             </div>
           ) : (
             <>
